@@ -1,5 +1,29 @@
 # motor-edge-guard
-Edge-based motor protection and IoT diagnostic prototype for induction motors and agricultural borewell pumps.
+
+**Edge-Based Motor Protection & IoT Diagnostic System**
+
+Motor Edge Guard is an embedded protection and IoT diagnostic prototype designed for induction motors and agricultural borewell pumps.
+
+The system uses an ESP32 microcontroller and a non-invasive SCT-013 current sensor to monitor motor current locally, identify abnormal operating conditions, and disconnect power through a solid-state relay.
+
+Its edge-based fault detection operates independently of cloud availability, while Blynk IoT provides remote monitoring and control.
+
+### Key Highlights
+
+- Local edge-based motor fault detection.
+- True-RMS current monitoring.
+- Adaptive baseline tracking using EMA.
+- Three-tier fault-aware protection logic.
+- Automatic recovery for selected fault conditions.
+- Blynk IoT remote monitoring and control.
+
+### Achievement
+
+🏆 **2nd Place | Hardware Edition**
+
+Smart India Hackathon (SIH)  
+College-Level Competition
+
 # Firmware Architecture & Implementation
 
 This directory contains the production-grade Arduino/C++ firmware running bare-metal on the ESP32 (Xtensa Dual-Core 32-bit LX6). 
@@ -23,72 +47,60 @@ The firmware is designed around deterministic edge execution: all fault detectio
 
 ## Edge DSP Pipeline
 
-EDGE DSP PIPELINE
-[ STEP 1: SIGNAL ACQUISITION ]
-CT Sensor (SCT-013) + Active LM358 Op-Amp conditioning
-Read via 12-Bit ADC on GPIO 34
-│
-▼
-[ STEP 2: DC BIAS CORRECTION (20 ms) ]
-Collect 200 samples @ 100 µs interval (1 Full 50 Hz AC Cycle)
-Calculate dynamic midpoint offset:
-dcOffset = rawSum / 200
-│
-▼
-[ STEP 3: TRUE-RMS INTEGRATION (40 ms) ]
-Collect 400 samples @ 100 µs interval (2 Full 50 Hz AC Cycles)
-Remove bias and compute discrete integration:
-currentRMS = sqrt( Σ(sample - dcOffset)² / 400 )
-│
-▼
-[ STEP 4: INRUSH GUARD & STABILIZATION ]
-Elapsed time < 5000 ms?
-├── YES ──> Bypass fault detection (Allow soft startup current)
-└── NO  ──> Proceed to baseline comparison
-│
-▼
-[ STEP 5: DEVIATION COMPUTATION ]
-Compute real-time load deviation:
-delta = currentRMS - baseRMS
-│
-▼
-[ STEP 6: 3-TIER FAULT ISOLATION MATRIX ]
-│
-├─── [TIER 1: DRY RUN] (currentRMS < 500.0, 2-frame confirm)
-│      ├── Action : Cut SSR instantly (GPIO 13 -> LOW)
-│      └── Recovery: Non-blocking auto-restart after 15s (groundwater recovery)
-│
-├─── [TIER 2: BEARING FRICTION] (Delta: +45.0 to +80.0, 2-frame confirm)
-│      ├── Action : Cut SSR instantly (GPIO 13 -> LOW)
-│      └── Recovery: 1-Strike cooldown restart (15s); Hard Lockout on repeat
-│
-├─── [TIER 3: LOCKED ROTOR] (Delta >= +90.0, instant)
-│      ├── Action : Sub-80ms immediate isolation (GPIO 13 -> LOW)
-│      └── Recovery: Hard Lockout (Requires manual reset via Pin 4 / App)
-│
-└─── [PREDICTIVE WARNING] (Delta: +15.0 to +45.0)
-└── Action : Telemetry amber flag on dashboard (Bearing drag advisory)
-│
-▼
-[ STEP 7: DYNAMIC BASELINE DRIFT TRACKING ]
-Update baseline via Exponential Moving Average (EMA):
-baseRMS = (0.01 * currentRMS) + (0.99 * baseRMS)
-│
-▼
-[ STEP 8: ASYNCHRONOUS TELEMETRY DISPATCH ]
-Push updates to Blynk IoT (V0, V1, V2, V3, V6) every 350 ms via BlynkTimer
+### Step 1: Signal Acquisition
+* **Hardware:** Non-invasive SCT-013 Current Transformer with active LM358 op-amp conditioning.
+* **Input:** Read via 12-bit ADC on **GPIO 34**.
 
+### Step 2: DC Midpoint Calibration (20 ms)
+* Collects 200 samples at 100 µs intervals across one full 50 Hz AC cycle.
+* Computes the dynamic midpoint offset to center the 1.65V virtual ground:
+  $$\text{dcOffset} = \frac{\sum \text{analogRead}}{200}$$
 
+### Step 3: Discrete True-RMS Integration (40 ms)
+* Collects 400 samples at 100 µs intervals across two complete 50 Hz AC cycles.
+* Subtracts the dynamic offset and calculates discrete RMS:
+  $$\text{currentRMS} = \sqrt{\frac{\sum (\text{sample} - \text{dcOffset})^2}{400}}$$
+
+### Step 4: Inrush Blanking Guard
+* Checks elapsed running time since relay actuation:
+  * **Elapsed < 5000 ms:** Inrush bypass active; fault evaluation skipped to allow rotor magnetization.
+  * **Elapsed >= 5000 ms:** System armed; fault matrices engaged.
+
+### Step 5: Deviation Analysis
+* Calculates immediate mechanical load deviation:
+  $$\text{Delta} = \text{currentRMS} - \text{baseRMS}$$
+
+### Step 6: 3-Tier Fault Isolation Matrix
+* **Tier 1: Dry Run / Cavitation (`currentRMS < 500.0`, 2 frames)**
+  * *Action:* Instant relay cutoff (GPIO 13 LOW).
+  * *Recovery:* Non-blocking auto-restart after 15 seconds to allow water table recovery.
+* **Tier 2: Bearing Friction / Overload (`Delta +45.0 to +80.0`, 2 frames)**
+  * *Action:* Instant relay cutoff (GPIO 13 LOW).
+  * *Recovery:* Exactly 1 auto-restart retry after 15 seconds cooldown. Permanent lockout on repeat.
+* **Tier 3: Locked Rotor Stall (`Delta >= +90.0`, Instant)**
+  * *Action:* Deterministic sub-80ms power cutoff (GPIO 13 LOW).
+  * *Recovery:* Hard lockout. Auto-restart strictly disabled. Manual reset required.
+* **Predictive Pre-Warning (`Delta +15.0 to +45.0`)**
+  * *Action:* Amber indicator sent to dashboard for preventative maintenance.
+
+### Step 7: Dynamic Baseline Drift (EMA)
+* Updates the baseline using an Exponential Moving Average to absorb line voltage fluctuations:
+  $$\text{baseRMS} = (0.01 \times \text{currentRMS}) + (0.99 \times \text{baseRMS})$$
+
+### Step 8: Telemetry Dispatch
+* Non-blocking background sync via `BlynkTimer` every 350 ms.
+
+---
 
 ## Dependencies & Toolchain
 
 ### Required Software
-- **Arduino IDE:** v2.x or PlatformIO Core
-- **ESP32 Board Package:** `esp32` by Espressif Systems (v2.0.x or later)
+* **Arduino IDE:** v2.x or PlatformIO Core
+* **ESP32 Board Package:** `esp32` by Espressif Systems (v2.0.x or later)
 
 ### Required Libraries
-- **Blynk:** `Blynk` by Volodymyr Shymanskyy (v1.3.x or later)
-- **WiFi:** Bundled natively with the ESP32 Arduino Core (`WiFi.h`, `WiFiClient.h`)
+* **Blynk:** `Blynk` by Volodymyr Shymanskyy (v1.3.x or later)
+* **WiFi:** Bundled natively with the ESP32 Arduino Core (`WiFi.h`, `WiFiClient.h`)
 
 ---
 
@@ -96,18 +108,21 @@ Push updates to Blynk IoT (V0, V1, V2, V3, V6) every 350 ms via BlynkTimer
 
 1. In Arduino IDE, navigate to **Tools > Board > esp32 > ESP32 Dev Module**.
 2. Configure the upload parameters:
-   - **Flash Frequency:** 80MHz
-   - **Flash Mode:** QIO
-   - **CPU Frequency:** 240MHz (WiFi/BT)
-   - **Upload Speed:** 921600 (or 115200 for low-noise serial cables)
-   - **Core Debug Level:** None
-   - **Partition Scheme:** Default 4MB with spiffs (1.2MB APP/1.5MB SPIFFS)
+   * **Flash Frequency:** 80MHz
+   * **Flash Mode:** QIO
+   * **CPU Frequency:** 240MHz (WiFi/BT)
+   * **Upload Speed:** 921600 (or 115200 for low-noise cables)
+   * **Core Debug Level:** None
+   * **Partition Scheme:** Default 4MB with spiffs
 3. Open `src/main.ino` and configure your credentials:
    ```cpp
    char ssid[] = "YOUR_WIFI_SSID";
    char pass[] = "YOUR_WIFI_PASSWORD";
+   
 
-Connect the ESP32 via Micro-USB, select the appropriate port, and click Upload.
+ 
+
+4.Connect the ESP32 via Micro-USB, select the appropriate port, and click Upload.
 
 ## Non-Blocking Telemetry Protocol
 To prevent network congestion from halting deterministic motor protection:
