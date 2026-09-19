@@ -1,0 +1,6 @@
+Component,Model/Specification,Quantity
+Microcontroller,ESP32 30-pin Dev Module,1
+Current Transformer,SCT-013-030,1
+Operational Amplifier,LM358,1
+Solid State Relay,SSR Active-HIGH,1
+Push Button,Manual Reset Active-LOW,1
