@@ -1,6 +1,10 @@
-Component,Model/Specification,Quantity
-Microcontroller,ESP32 30-pin Dev Module,1
-Current Transformer,SCT-013-030,1
-Operational Amplifier,LM358,1
-Solid State Relay,SSR Active-HIGH,1
-Push Button,Manual Reset Active-LOW,1
+Item #,Component Description,Part Number / Model,Quantity,Package / Form Factor,Functional Role
+1,Dual-Core Wi-Fi Microcontroller,ESP32 NodeMCU (30-Pin),1,DIP-30 Module,Edge DSP computing core and IoT engine
+2,Split-Core Current Transformer,SCT-013-000,1,Clip-on CT Sensor,Non-invasive AC current sensing (0-100A / 0-50mA)
+3,Active Signal Conditioning Module,LM358 Dual Op-Amp Module,1,PCB Breakout,Burden conversion virtual DC bias (+1.65V) & filtering
+4,Power Switching Actuator,Solid-State Relay (SSR-25DA or 5V Opto-Relay),1,Chassis / Module,Mains live line isolation switch
+5,Tactile Reset Switch,6x6x5mm Momentary Push Button,1,Through-Hole,Physical active-LOW fault clear trigger
+6,Single-Phase AC Test Load,Universal AC Motor / Induction Pump,1,Bench Load,230V AC mechanical target for fault simulation
+7,Prototyping Platform,830-Point Solderless Breadboard,1,Breadboard,Signal distribution and modular wiring
+8,Connecting Leads,Dupont Jumper Wires (M-M / M-F),15,Wiring Harness,Low-voltage DC signal and ground routing
+9,Power Source,5V / 2A Micro-USB Supply Adapter,1,External Adapter,Regulated DC supply for ESP32 and peripheral rail
