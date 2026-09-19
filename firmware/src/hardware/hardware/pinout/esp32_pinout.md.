@@ -4,37 +4,67 @@ This document outlines the pin configurations, functional roles, electrical char
 
 ---
 
-## Pin Allocation Summary
+## Pin Allocation Breakdown
 
-| ESP32 Pin | Functional Name | Direction | Connected Device | Electrical Properties |
-| :--- | :--- | :--- | :--- | :--- |
-| **GPIO 34** | `SENSOR_PIN` | Input | LM358 Output / SCT-013 | ADC1 Channel 6, 12-Bit (0-3.3V range), Input-only |
-| **GPIO 13** | `RELAY_PIN` | Output | Solid-State Relay (SSR) | Digital Output, Active-HIGH trigger, 3.3V logic |
-| **GPIO 4** | `RESET_BTN` | Input | Tactile Push Button | Digital Input, Configured with `INPUT_PULLUP` (Active-LOW) |
-| **3V3** | Power Rail | Output | LM358 VCC | Regulated 3.3V rail from on-board LDO |
-| **VIN / 5V**| Power Rail | Input/Output| Relay Board VCC | System 5V input rail from USB / external supply |
-| **GND** | Ground Rail | Reference | All Components | Common system ground reference |
+### GPIO 34 (Sensor Input)
+* **Functional Name:** `SENSOR_PIN`
+* **Signal Direction:** Input only
+* **Connected Device:** LM358 Output (Conditioned SCT-013 CT)
+* **Electrical Properties:** ADC1 Channel 6, 12-Bit resolution (0 to 3.3V range)
+* **Role:** Dedicated analog acquisition channel for current waveform sampling
+
+### GPIO 13 (Relay Actuator Gate)
+* **Functional Name:** `RELAY_PIN`
+* **Signal Direction:** Output
+* **Connected Device:** Solid-State Relay (SSR) control input
+* **Electrical Properties:** Digital Output, Active-HIGH trigger (3.3V logic)
+* **Role:** Physical isolation switch to cut mains power upon fault detection
+
+### GPIO 4 (Hardware Reset)
+* **Functional Name:** `RESET_BTN`
+* **Signal Direction:** Input
+* **Connected Device:** Tactile momentary push button
+* **Electrical Properties:** Digital Input configured with `INPUT_PULLUP` (Active-LOW)
+* **Role:** Manual hardware interrupt to clear latched faults and reset states
+
+### 3V3 (Power Rail)
+* **Functional Name:** 3.3V Output
+* **Connected Device:** LM358 Op-Amp conditioning board VCC
+* **Electrical Properties:** Regulated 3.3V output from onboard LDO
+* **Role:** Supplies clean low-voltage rail to prevent ADC overvoltage
+
+### VIN / 5V (System Power)
+* **Functional Name:** 5V Input/Output
+* **Connected Device:** Relay board VCC / System supply
+* **Electrical Properties:** Direct connection from Micro-USB input
+* **Role:** Powers external relay coils and optical isolators
+
+### GND (Ground Reference)
+* **Functional Name:** Common Ground
+* **Connected Device:** ESP32, LM358 board, SSR, and Push Button
+* **Role:** Unified reference ground plane across all analog and digital stages
 
 ---
 
 ## Hardware Pin Selection Rationale
 
 ### 1. Current Sensor Input (GPIO 34)
-* **ADC1 Exclusivity:** The ESP32 contains two analog-to-digital converters: ADC1 and ADC2. Because ADC2 is multiplexed with the 2.4 GHz Wi-Fi radio and becomes unavailable when Wi-Fi is transmitting, analog current sampling must strictly use an ADC1 pin. GPIO 34 is tied to **ADC1 Channel 6**, ensuring uninterrupted sampling during Blynk cloud sync.
-* **Input-Only Architecture:** GPIO 34 has no internal pull-up/pull-down resistors or digital output circuitry, preventing impedance loading on the analog conditioning stage.
+* **ADC1 Exclusivity:** The ESP32 contains two analog-to-digital converters: ADC1 and ADC2. Because ADC2 is multiplexed with the 2.4 GHz Wi-Fi radio and becomes disabled during Wi-Fi transmission, current sampling must strictly use an ADC1 pin. GPIO 34 is tied to ADC1 Channel 6, ensuring continuous, uninterrupted sampling during Blynk cloud sync.
+* **Input-Only Architecture:** GPIO 34 has no internal pull-up or pull-down resistors or output circuitry, eliminating unintended impedance loading on the analog conditioning stage.
 
 ### 2. Relay Actuator Control (GPIO 13)
-* **Strapping Pin Isolation:** Critical control outputs must avoid strapping pins (such as GPIO 0, 2, or 12) to prevent accidental bootloader states or high voltage surges during bootup. GPIO 13 provides clean digital switching without floating issues during microcontroller reboot.
-* **Low-Latency Switching:** Directly driven via register manipulation inside the firmware loop, achieving power cutoffs within microseconds of fault confirmation.
+* **Strapping Pin Isolation:** Critical control outputs must avoid strapping pins (such as GPIO 0, 2, or 12) to prevent entering unintended bootloader modes or toggling output states during boot. GPIO 13 provides clean digital switching without floating issues during microcontroller power-on.
+* **Low-Latency Switching:** Driven directly via register manipulation inside the firmware loop, achieving power cutoffs within microseconds of fault confirmation.
 
 ### 3. Hardware Manual Reset (GPIO 4)
-* **Active-LOW Architecture:** Utilizes the ESP32 internal pull-up resistor (`pinMode(RESET_BTN, INPUT_PULLUP)`). The pin is held at 3.3V during normal operation and grounded when the button is pressed, removing the need for an external pull-up resistor.
-* **Debounce Implementation:** Polled in the primary non-blocking loop with edge qualification to prevent mechanical contact bounce.
+* **Active-LOW Architecture:** Utilizes the ESP32 internal pull-up resistor via `pinMode(RESET_BTN, INPUT_PULLUP)`. The pin remains pulled to 3.3V during normal operation and grounds when the button is pressed, removing the need for external pull-up resistors.
+* **Debounce Implementation:** Polled in the primary non-blocking loop with edge qualification to filter mechanical contact chatter.
 
 ---
 
 ## Wiring & Electrical Constraints
 
-* **Maximum Current Sinking/Sourcing:** GPIO 13 can source a maximum of 40 mA (recommended 20 mA or lower). Ensure the SSR optocoupler drive circuit does not draw beyond this limit.
+* **Maximum Current Sinking/Sourcing:** GPIO 13 can source a maximum of 40 mA (recommended 20 mA or lower). Ensure the SSR optocoupler drive circuit does not exceed this limit.
 * **Voltage Rating Notice:** ESP32 GPIOs are strictly **not 5V tolerant**. The LM358 operational amplifier must be powered from the 3.3V rail to prevent voltage swings exceeding 3.3V into GPIO 34.
 * **Common Grounding:** Ground pins of the ESP32, the LM358 op-amp conditioning circuit, the push-button switch, and the relay control input must be tied together at a single common ground point to prevent ground bounce and sensor noise.
+
