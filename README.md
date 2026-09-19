@@ -22,7 +22,7 @@ The firmware is designed around deterministic edge execution: all fault detectio
 ---
 
 ## Edge DSP Pipeline
-========================================================================================
+
 EDGE DSP PIPELINE
 [ STEP 1: SIGNAL ACQUISITION ]
 CT Sensor (SCT-013) + Active LM358 Op-Amp conditioning
@@ -77,7 +77,7 @@ baseRMS = (0.01 * currentRMS) + (0.99 * baseRMS)
 ▼
 [ STEP 8: ASYNCHRONOUS TELEMETRY DISPATCH ]
 Push updates to Blynk IoT (V0, V1, V2, V3, V6) every 350 ms via BlynkTimer
-========================================================================================
+
 
 
 ## Dependencies & Toolchain
