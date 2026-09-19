@@ -1,45 +1,23 @@
-
-# Arduino / ESP32
+# Compiled binaries and firmware builds
 *.bin
-*.elf
 *.hex
-*.eep
-*.map
+*.elf
+*.o
+*.a
+*.d
 
-# Arduino IDE
-arduino/.arduino15/
-arduino/build/
-arduino/cache/
-
-# PlatformIO
+# Arduino & PlatformIO temporary directories
 .pio/
-.platformio/
-platformio.ini.bak
-
-# Compiled binaries
-build/
-dist/
-
-# VS Code
 .vscode/
-!.vscode/extensions.json
-!.vscode/settings.json
+.idea/
+build/
+*.sketch.*
 
-# Operating System
+# OS generated files
 .DS_Store
 Thumbs.db
+ehthumbs.db
 
-# Temporary files
-*.tmp
-*.swp
-*.log
-
-# Secrets and credentials
+# Sensitive local configurations
 secrets.h
-credentials.h
-.env
-.env.*
-
-# Backup files
-*.bak
-*~
+config.local.h
