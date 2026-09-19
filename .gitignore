@@ -1,0 +1,45 @@
+
+# Arduino / ESP32
+*.bin
+*.elf
+*.hex
+*.eep
+*.map
+
+# Arduino IDE
+arduino/.arduino15/
+arduino/build/
+arduino/cache/
+
+# PlatformIO
+.pio/
+.platformio/
+platformio.ini.bak
+
+# Compiled binaries
+build/
+dist/
+
+# VS Code
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Operating System
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.swp
+*.log
+
+# Secrets and credentials
+secrets.h
+credentials.h
+.env
+.env.*
+
+# Backup files
+*.bak
+*~
