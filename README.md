@@ -25,7 +25,7 @@ The firmware is designed around deterministic edge execution: all fault detectio
 Analog Current Input (GPIO 34)
 │
 ▼
-[20ms Dynamic DC Offset Acquisition]  ──> rawSum / 200 (Centers 1.65V bias)
+[20ms Dynamic DC Offset Acquisition]  ──>rawSum / 200 (Centers 1.65V bias)
 │
 ▼
 [40ms True-RMS Discrete Integration]  ──> sqrt( Σ(sample - offset)^2 / 400 )
