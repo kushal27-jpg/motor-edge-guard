@@ -22,27 +22,63 @@ The firmware is designed around deterministic edge execution: all fault detectio
 ---
 
 ## Edge DSP Pipeline
-Analog Current Input (GPIO 34)
+========================================================================================
+EDGE DSP PIPELINE
+[ STEP 1: SIGNAL ACQUISITION ]
+CT Sensor (SCT-013) + Active LM358 Op-Amp conditioning
+Read via 12-Bit ADC on GPIO 34
 │
 ▼
-[20ms Dynamic DC Offset Acquisition]  ──>rawSum / 200 (Centers 1.65V bias)
+[ STEP 2: DC BIAS CORRECTION (20 ms) ]
+Collect 200 samples @ 100 µs interval (1 Full 50 Hz AC Cycle)
+Calculate dynamic midpoint offset:
+dcOffset = rawSum / 200
 │
 ▼
-[40ms True-RMS Discrete Integration]  ──> sqrt( Σ(sample - offset)^2 / 400 )
+[ STEP 3: TRUE-RMS INTEGRATION (40 ms) ]
+Collect 400 samples @ 100 µs interval (2 Full 50 Hz AC Cycles)
+Remove bias and compute discrete integration:
+currentRMS = sqrt( Σ(sample - dcOffset)² / 400 )
 │
 ▼
-[Dynamic Baseline Comparison]        ──> delta = currentRMS - baseRMS
-│
-├──> If Delta in [+15, +45]  ──> Amber Drag Warning
-├──> If Delta in [+45, +80]  ──> Tier 2 Trip (1-strike Cooldown Auto-Restart)
-├──> If Delta >= +90         ──> Tier 3 Trip (Sub-80ms Relay Cutoff, Hard Lockout)
-└──> If RMS < 500            ──> Tier 1 Trip (Dry Run, 15s Auto-Restart)
+[ STEP 4: INRUSH GUARD & STABILIZATION ]
+Elapsed time < 5000 ms?
+├── YES ──> Bypass fault detection (Allow soft startup current)
+└── NO  ──> Proceed to baseline comparison
 │
 ▼
-[Exponential Moving Average Update]  ──> baseRMS = (0.01 * currentRMS) + (0.99 * baseRMS)
+[ STEP 5: DEVIATION COMPUTATION ]
+Compute real-time load deviation:
+delta = currentRMS - baseRMS
+│
+▼
+[ STEP 6: 3-TIER FAULT ISOLATION MATRIX ]
+│
+├─── [TIER 1: DRY RUN] (currentRMS < 500.0, 2-frame confirm)
+│      ├── Action : Cut SSR instantly (GPIO 13 -> LOW)
+│      └── Recovery: Non-blocking auto-restart after 15s (groundwater recovery)
+│
+├─── [TIER 2: BEARING FRICTION] (Delta: +45.0 to +80.0, 2-frame confirm)
+│      ├── Action : Cut SSR instantly (GPIO 13 -> LOW)
+│      └── Recovery: 1-Strike cooldown restart (15s); Hard Lockout on repeat
+│
+├─── [TIER 3: LOCKED ROTOR] (Delta >= +90.0, instant)
+│      ├── Action : Sub-80ms immediate isolation (GPIO 13 -> LOW)
+│      └── Recovery: Hard Lockout (Requires manual reset via Pin 4 / App)
+│
+└─── [PREDICTIVE WARNING] (Delta: +15.0 to +45.0)
+└── Action : Telemetry amber flag on dashboard (Bearing drag advisory)
+│
+▼
+[ STEP 7: DYNAMIC BASELINE DRIFT TRACKING ]
+Update baseline via Exponential Moving Average (EMA):
+baseRMS = (0.01 * currentRMS) + (0.99 * baseRMS)
+│
+▼
+[ STEP 8: ASYNCHRONOUS TELEMETRY DISPATCH ]
+Push updates to Blynk IoT (V0, V1, V2, V3, V6) every 350 ms via BlynkTimer
+========================================================================================
 
-
----
 
 ## Dependencies & Toolchain
 
@@ -73,7 +109,7 @@ Analog Current Input (GPIO 34)
 
 Connect the ESP32 via Micro-USB, select the appropriate port, and click Upload.
 
-##Non-Blocking Telemetry Protocol
+## Non-Blocking Telemetry Protocol
 To prevent network congestion from halting deterministic motor protection:
 The SSR trigger pin (GPIO 13) is actuated on line 1 of fault interrupts before any cloud sync calls.
 Telemetry push events (Blynk.virtualWrite) are scheduled via non-blocking BlynkTimer callbacks running at 350 ms intervals.
